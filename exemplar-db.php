@@ -11,12 +11,12 @@ global $db_version;
 $db_version = '1.0';
 
 global $table_postfix;
-$table_postfix = 'judgements';
+$table_postfix = 'judgments';
 
 // Call create_table on plugin activation.
 register_activation_hook(__FILE__,'create_table');
 /*
- * Creates the table "wp_judgements" in the database.
+ * Creates the table "wp_judgments" in the database.
  */
 function create_table() {
     global $wpdb;
@@ -112,23 +112,46 @@ function pull_data_cpts($comp_num, $task_num) {
         'exGoldRationales' => $ex_gold_rationales
     );
 
+    d($data_for_js);    //dumps data_for_js onto the page using kint to make the format readable
+
     return $data_for_js;
 }
 
 // Genesis activation hook - if statement in function has it run only on a given page
 add_action('genesis_before_content','save_data');
 /*
- * Saves the data from pull_data_cpts if a specific page is loaded.
+ * Calls the insert function from the class judg_db to insert exemplar data into the table
  */
 function save_data() {
-    $page_slug = 'react-in-wp';
+    $page_slug = 'judgment-test';
+    // test data
     $comp_num = 2;
     $task_num = 9;
+    $learner_level = 1;
+    $learner_rationale = 'i chose this for a reason';
+    $judg_corr = 1;
+    $judg_time = '2:00:00';
+    global $current_user;
     if(is_page($page_slug)) {
         $db = new judg_db;
-        $all_data = pull_data_cpts($comp_num,$task_num);
+        $cpt_data = pull_data_cpts($comp_num,$task_num);
+        for ($i=0;$i<sizeof($cpt_data['exIds']);$i++) {
+            $ex_id = $cpt_data['exIds'][$i];
+            $db_data = array(
+                'learner_id' => $current_user->ID,
+                'trial_num' => $i+1,
+                'comp_num' => $comp_num,
+                'task_num' => $task_num,
+                'ex_title' => get_the_title($ex_id),
+                'learner_level' => $learner_level,
+                'learner_rationale' => $learner_rationale,
+                'gold_level' => $cpt_data['exGoldLevels'][$ex_id],
+                'judg_corr' => $judg_corr,
+                'judg_time'  => $judg_time,
+            );
+            $db->insert($db_data);
+        }
     }
-    return $all_data;
 }
 
 /*
@@ -223,7 +246,7 @@ class judg_db {
      * Returns an array with all results from the database with the given parameter
      * If $count is set to true, just returns the number of results
      */
-    public function get_judgements($args=array(),$count=false) {
+    public function get_judgments($args=array(),$count=false) {
         global $wpdb;
         $defaults = array(
             'learner_id' => 0,
@@ -365,7 +388,7 @@ class judg_db {
         $cache_key = (true === $count) ? md5('judg_count' . serialize($args)) :
             md5('judg_' . serialize($args));
 
-        $results = wp_cache_get($cache_key,'judgements');
+        $results = wp_cache_get($cache_key,'judgments');
         if(false === $results) {
             if(true === $count) {
                 $results = absint($wpdb->get_var("SELECT COUNT(" . static::$primary_key . ") FROM ". self::_table() .
@@ -378,7 +401,7 @@ class judg_db {
             }
         }
 
-        wp_cache_set($cache_key,$results,'judgements',3600);
+        wp_cache_set($cache_key,$results,'judgments',3600);
         return $results;
     }
 }

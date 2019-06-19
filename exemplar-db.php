@@ -116,20 +116,19 @@ function pull_data_cpts($comp_num, $task_num) {
 }
 
 // Genesis activation hook - if statement in function has it run only on a given page
-//add_action('genesis_before_content','save_data');
+add_action('genesis_before_content','save_data');
 /*
- * Calls the insert function from the class judg_db to insert exemplar data into the table
+ * Saves the data from pull_data_cpts if a specific page is loaded.
  */
 function save_data() {
     $page_slug = 'react-in-wp';
+    $comp_num = 2;
+    $task_num = 9;
     if(is_page($page_slug)) {
-        //get comp_num and task_num for pull_data_cpts call!
         $db = new judg_db;
-        $all_data = pull_data_cpts();
-        for($i=0;$i<sizeof($all_data);$i++) {
-            $db->insert($all_data[$i]);
-        }
+        $all_data = pull_data_cpts($comp_num,$task_num);
     }
+    return $all_data;
 }
 
 /*

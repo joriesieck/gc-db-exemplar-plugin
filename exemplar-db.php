@@ -36,10 +36,10 @@ function create_table() {
 		task_num smallint(2) UNSIGNED NOT NULL,
 		ex_title tinytext NOT NULL,
 		learner_level smallint(1) UNSIGNED NOT NULL,
-		learner_rationale longtext NOT NULL,
 		gold_level longtext NOT NULL,
 		judg_corr smallint(1) UNSIGNED NOT NULL,
 	    judg_time time NOT NULL,
+	    learner_rationale longtext NOT NULL,
         PRIMARY KEY (judg_id)
 	) $charset_collate;";
 
@@ -97,18 +97,18 @@ function pull_data_cpts($comp_num, $task_num) {
 
     $competencies = get_posts($c_args);
     foreach ($competencies as $competency) {
-        $c_defs[] = $competency->post_content;
+        $j = get_field('comp_part',$competency->ID);
+        $c_defs[$j] = $competency->post_content;
     }
-
 
     $data_for_js = array(
         'ajax_url' => admin_url('admin-ajax.php'),
         'nonce' => wp_create_nonce('gcap_scores_nonce'),
+        'sContent' => $s_content,
+        'cDefinitions' => $c_defs,
         'exIds' => $ex_ids,
         'exemplars' => $ex_contents,
         'exGoldLevels' => $exemplar_gold_levels,
-        'sContent' => $s_content,
-        'cDefinitions' => $c_defs,
         'exGoldRationales' => $ex_gold_rationales
     );
 
@@ -129,7 +129,6 @@ function save_data() {
     $task_num = 9;
     $learner_level = 1;
     $learner_rationale = 'i chose this for a reason';
-    $judg_corr = 1;
     $judg_time = '2:00:00';
     global $current_user;
     if(is_page($page_slug)) {
@@ -137,6 +136,12 @@ function save_data() {
         $cpt_data = pull_data_cpts($comp_num,$task_num);
         for ($i=0;$i<sizeof($cpt_data['exIds']);$i++) {
             $ex_id = $cpt_data['exIds'][$i];
+            $gold_level = $cpt_data['exGoldLevels'][$ex_id];
+            if($learner_level==$gold_level){
+                $judg_corr = 1;
+            } else {
+                $judg_corr = 0;
+            }
             $db_data = array(
                 'learner_id' => $current_user->ID,
                 'trial_num' => $i+1,
@@ -144,10 +149,10 @@ function save_data() {
                 'task_num' => $task_num,
                 'ex_title' => get_the_title($ex_id),
                 'learner_level' => $learner_level,
-                'learner_rationale' => $learner_rationale,
-                'gold_level' => $cpt_data['exGoldLevels'][$ex_id],
+                'gold_level' => $gold_level,
                 'judg_corr' => $judg_corr,
                 'judg_time'  => $judg_time,
+                'learner_rationale' => $learner_rationale,
             );
             $db->insert($db_data);
         }
